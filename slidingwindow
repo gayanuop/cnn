@@ -1,0 +1,75 @@
+# import the necessary packages
+import argparse
+import time
+import cv2
+from PIL import Image
+import numpy as np
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+from keras.models import load_model
+from keras.models import Sequential
+model = Sequential()
+model =load_model('model.04-0.07-0.98-0.09-0.96.h5')
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+
+# load the image and define the window width and height
+image = cv2.imread('mitotest1.bmp')
+(winW, winH) = (101, 101)
+
+def get_best_bounding_box(resized):
+
+    locations = []
+    for (x, y, window) in sliding_window(resized, stepSize=50, windowSize=(winW, winH)):
+            # if the window does not meet our desired window size, ignore it
+
+            if window.shape[0] != winH or window.shape[1] != winW:
+                continue
+            else:
+                # img[x,y,:] = image[x,y,:]
+
+                box = (y, x, y + winW, x + winH)
+                cropped_img = image[box[0]:box[2], box[1]:box[3]]
+                prd=predict_function(cropped_img)
+
+            if prd == 1:
+                locations.append(box)
+                print("found mitosis")
+
+            clone = resized.copy()
+            cv2.rectangle(clone, (x, y), (x + winW, y + winH), (0, 255, 0), 2)
+            cv2.imshow("Window", clone)
+            cv2.waitKey(1)
+            time.sleep(0.1)
+    return locations
+
+
+def predict_function(x):
+    clf = model.predict(np.reshape(x, [1, 101, 101, 3]))
+    print(clf)
+    if (clf[0, [0]]) == [ 0.]:
+        return 1
+    else:
+        return 0
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+image2 = mpimg.imread("mitotest1.bmp")
+def draw_boxes(image2, locations):
+    fix, ax = plt.subplots(1)
+    ax.imshow(image2)
+    for i in range(len(locations)):
+        for l in locations:
+            rectR = patches.Rectangle((l[1], l[0]), 101, 101, linewidth=2, edgecolor='G', facecolor='none')
+            ax.add_patch(rectR)
+    plt.show()
+    print
+    len(locations)
+
+locations=get_best_bounding_box(image)
+print(locations)
+draw_boxes(image2,locations)
